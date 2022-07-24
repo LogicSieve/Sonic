@@ -1,6 +1,5 @@
 #!/usr/bin/python3
-
-
+import copy
 import os
 
 
@@ -8,8 +7,11 @@ import keras.models
 import matplotlib.pyplot as plt
 import numpy as np
 import pyaudio
+import struct
 import tensorflow as tf
 import wave
+
+DEBUG = False
 # from ctypes import *
 #
 # # From alsa-lib Git 3fd4ab9be0db7c7430ebd258f2717a976381715d
@@ -68,12 +70,35 @@ def replay_audio(self, filename):
   p.terminate()
 
 
+def plot_wav(wav_data):
+  CHUNK = 1024
+  # count = 0
+  # stop = len(wav_data) * 2 - 2
+  all_frames = tuple()
+  for wav_chunks in wav_data:
+    super_fine_frame = struct.unpack(str(CHUNK) + 'h', wav_chunks)
+    all_frames = all_frames + super_fine_frame
+    #print(f'{type(super_fine_frame)} --- {super_fine_frame}')
+    # count = count + 2
+    
+    #print("* done recording")
+
+  #print(f'Len superframe {len(super_fine_frame)}  --- len all {len(all_frames)}')
+  ax = plt.subplot()
+  ax.autoscale(enable=False, axis='y', tight=None)
+  ax.set_yticks(np.arange(-255, 255, 16))
+  ax.plot(all_frames)
+  ax.set_title('wav, ride it!')
+  plt.show(block=False)
+  plt.pause(1)
+  plt.close()
+    
 def record_audio(wav_filename):
   CHUNK = 1024
   FORMAT = pyaudio.paInt16
   CHANNELS = 1
   RATE = 24000
-  RECORD_SECONDS = 5
+  RECORD_SECONDS = 1.5
   WAVE_OUTPUT_FILENAME = wav_filename
   
   p = pyaudio.PyAudio()
@@ -85,14 +110,28 @@ def record_audio(wav_filename):
                   frames_per_buffer=CHUNK)
   
   #print("* recording")
-  
+  spike_value = 75
+  trigger_width = int(RATE / CHUNK * RECORD_SECONDS / 4)
   frames = []
   
   for i in range(0, int(RATE / CHUNK * RECORD_SECONDS)):
     data = stream.read(CHUNK)
     frames.append(data)
-  
-  #print("* done recording")
+    last_data = b''
+    if i % 2 != 1:
+      super_frame = last_data + data
+      super_fine_frame = struct.unpack(str(CHUNK) + 'h', super_frame)
+      spike_count = 0
+      for entry in super_fine_frame:
+        if abs(entry) > spike_value:
+          spike_count += 1
+      if spike_count > 20 and trigger_width:
+        i = 0
+        
+    last_data = data
+
+        
+  plot_wav(frames)
   
   stream.stop_stream()
   stream.close()
@@ -178,7 +217,8 @@ def test_file(filename):
   prediction = model(new_spectrogram)
   val_predict = tf.math.argmax(prediction, axis=1)
   simple_prediction = tf.nn.softmax(prediction[0])
-  print(f'Simple Prediction is {simple_prediction} val {val_predict}')
+  if DEBUG:
+    print(f'Simple Prediction is {simple_prediction} val {val_predict}')
   #print(f'Target Label {target_label}')
   
   language = val_predict[0]
@@ -211,30 +251,30 @@ def graph_9(list_of_spectro):
     count = count + 1
 
   plt.show(block=False)
-  plt.pause(9)
+  plt.pause(1)
   plt.close()
 
 while True:
-  # record_audio('word_data/buffer.wav')
-  # test_file('/buffer.wav')
+  #record_audio('word_data/buffer.wav')
+  #test_file('/buffer.wav')
   spectros = []
-  # for count in range(0, 8):
-  #   filename = f'buffer.wav{count}'
-  #   record_audio(f'word_data/{filename}')
-  #   spectro = test_file(f'/{filename}')
-  #   spectros.append(spectro)
-  spectroA = test_file('/ru_wave1/hospital-ru-def.wav')
-  spectros.append(spectroA)
-  spectroA = test_file('/ms_wave1/hospital-ms-def.wav')
-  spectros.append(spectroA)
-  spectroA = test_file('/en_wave1/hospital-en-def.wav')
-  spectros.append(spectroA)
-  spectroA = test_file('/id_wave1/hospital-id-def.wav')
-  spectros.append(spectroA)
-  spectroA = test_file('/fr_wave1/hospital-fr-def.wav')
-  spectros.append(spectroA)
+  for count in range(0, 8):
+    filename = f'buffer.wav{count}'
+    record_audio(f'word_data/{filename}')
+    spectro = test_file(f'/{filename}')
+    spectros.append(spectro)
+  # spectroA = test_file('/ru_wave1/hospital-ru-def.wav')
+  # spectros.append(spectroA)
+  # spectroA = test_file('/ms_wave1/hospital-ms-def.wav')
+  # spectros.append(spectroA)
+  # spectroA = test_file('/en_wave1/hospital-en-def.wav')
+  # spectros.append(spectroA)
+  # spectroA = test_file('/id_wave1/hospital-id-def.wav')
+  # spectros.append(spectroA)
+  # spectroA = test_file('/fr_wave1/hospital-fr-def.wav')
+  # spectros.append(spectroA)
   spectroA = test_file('/uk_wave1/hospital-uk-def.wav')
   spectros.append(spectroA)
-  
+
   graph_9(spectros)
 
