@@ -86,7 +86,7 @@ def plot_wav(wav_data):
   #print(f'Len superframe {len(super_fine_frame)}  --- len all {len(all_frames)}')
   ax = plt.subplot()
   ax.autoscale(enable=False, axis='y', tight=None)
-  ax.set_yticks(np.arange(-255, 255, 16))
+  ax.set_yticks(np.arange(-32767, 32767, 1024))
   ax.plot(all_frames)
   ax.set_title('wav, ride it!')
   plt.show(block=False)
@@ -98,7 +98,7 @@ def record_audio(wav_filename):
   FORMAT = pyaudio.paInt16
   CHANNELS = 1
   RATE = 24000
-  RECORD_SECONDS = 1.5
+  RECORD_SECONDS = 1
   WAVE_OUTPUT_FILENAME = wav_filename
   
   p = pyaudio.PyAudio()
@@ -110,8 +110,8 @@ def record_audio(wav_filename):
                   frames_per_buffer=CHUNK)
   
   #print("* recording")
-  spike_value = 75
-  trigger_width = int(RATE / CHUNK * RECORD_SECONDS / 4)
+  spike_value = 200
+  trigger_width = int(RATE / CHUNK * RECORD_SECONDS / 4)   # whole frame width / 4
   frames = []
   
   for i in range(0, int(RATE / CHUNK * RECORD_SECONDS)):
@@ -223,11 +223,11 @@ def test_file(filename):
   
   language = val_predict[0]
   langtypes = ['Malay', 'English', 'Ukranian', 'Indonesian', 'French', 'Russian']
-  if simple_prediction[language] > 0.65:
+  if simple_prediction[language] > 0.4:
     print(f'{langtypes[language]} <<< detect' )
     #replay_audio(f'{language}_id_file.wav')
   else:
-    print(f'--no detect--')
+    print(f'--no detect-- {val_predict}')
 
   return target_spectrogram
   # plt.bar(langtypes, tf.nn.softmax(prediction[0]))
