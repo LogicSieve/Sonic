@@ -25,7 +25,7 @@ filenames = tf.random.shuffle(filenames)
 num_samples = len(filenames)
 print('Number of total examples:', num_samples)
 print('Number of examples per label:',
-      len(tf.io.gfile.listdir(str(data_dir + '/ru_wave1/'))))
+      len(tf.io.gfile.listdir(str(data_dir + '/en_wave1/'))))
 print('Example file tensor:', filenames[0])
 
 block_size = int(num_samples / 10)
@@ -255,7 +255,7 @@ plt.legend(['loss', 'val_loss'])
 plt.show()
 
 print('Save model, so we do not have to ALWAYs retrain!')
-model.save('spectromaster_v4.h5')
+model.save('spectromaster_v6_lang.h5')
 
 test_audio = []
 test_labels = []

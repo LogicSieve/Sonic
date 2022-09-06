@@ -90,7 +90,7 @@ def plot_wav(wav_data):
   ax.plot(all_frames)
   ax.set_title('wav, ride it!')
   plt.show(block=False)
-  plt.pause(1)
+  plt.pause(0.3)
   plt.close()
     
 def record_audio(wav_filename):
@@ -98,7 +98,7 @@ def record_audio(wav_filename):
   FORMAT = pyaudio.paInt16
   CHANNELS = 1
   RATE = 24000
-  RECORD_SECONDS = 1
+  RECORD_SECONDS = 1.6
   WAVE_OUTPUT_FILENAME = wav_filename
   
   p = pyaudio.PyAudio()
@@ -111,10 +111,12 @@ def record_audio(wav_filename):
   
   #print("* recording")
   spike_value = 200
-  trigger_width = int(RATE / CHUNK * RECORD_SECONDS / 4)   # whole frame width / 4
+  trigger_width = int(CHUNK / 128)
   frames = []
+  i = 0
+  triggered = False
   
-  for i in range(0, int(RATE / CHUNK * RECORD_SECONDS)):
+  while i < int(RATE / CHUNK * RECORD_SECONDS):
     data = stream.read(CHUNK)
     frames.append(data)
     last_data = b''
@@ -125,13 +127,20 @@ def record_audio(wav_filename):
       for entry in super_fine_frame:
         if abs(entry) > spike_value:
           spike_count += 1
-      if spike_count > 20 and trigger_width:
-        i = 0
-        
-    last_data = data
-
-        
-  plot_wav(frames)
+          #print(f'SPIKE ! # {spike_count}')
+        if not triggered:
+          if spike_count < trigger_width:
+            i = 1
+            frames = []
+            #print('.', end='')
+          else:
+            triggered = True
+            #print('Trigger recording...')
+            #print(f'Spike Count {spike_count} trigger width {trigger_width}')
+          
+    i += 1
+  
+  #plot_wav(frames)
   
   stream.stop_stream()
   stream.close()
@@ -198,7 +207,7 @@ def get_spectrogram(waveform):
 data_dir = './word_data'
 
 input_shape = (124, 129, 1)
-model = keras.models.load_model('spectromaster_v4.h5')
+model = keras.models.load_model('spectromaster_vEng_vs_Malay.h5')
 
 model.summary()
 print('Load model, so we do not have to ALWAYs retrain!')
@@ -208,12 +217,8 @@ def test_file(filename):
   target_wav, target_label = get_waveform_and_label(str(sample_file))
   target_spectrogram = get_spectrogram(target_wav)
   
-  target_shape = tf.shape(target_spectrogram)
-  #print(f'target_shape = {target_shape}')
   new_spectrogram = target_spectrogram[None, ...]
-  target_shape = tf.shape(new_spectrogram)
-  #print(f'target_shape = {target_shape}')
-  
+ 
   prediction = model(new_spectrogram)
   val_predict = tf.math.argmax(prediction, axis=1)
   simple_prediction = tf.nn.softmax(prediction[0])
@@ -221,13 +226,17 @@ def test_file(filename):
     print(f'Simple Prediction is {simple_prediction} val {val_predict}')
   #print(f'Target Label {target_label}')
   
+  #print(f'VAL_PREDICT {val_predict}')
   language = val_predict[0]
-  langtypes = ['Malay', 'English', 'Ukranian', 'Indonesian', 'French', 'Russian']
-  if simple_prediction[language] > 0.4:
-    print(f'{langtypes[language]} <<< detect' )
+  #langtypes = ['Malay', 'English', 'Ukranian', 'Indonesian', 'French', 'Russian']
+  langtypes = ['Malay', 'English']
+
+  prediction_pretty = [f'{prediction:.2f}' for prediction in simple_prediction]
+  if simple_prediction[language] > 0.65:
+    print(f'{langtypes[language]} <<< -- {prediction_pretty}' )
     #replay_audio(f'{language}_id_file.wav')
   else:
-    print(f'--no detect-- {val_predict}')
+    print(f'--no detect-- {prediction_pretty}')
 
   return target_spectrogram
   # plt.bar(langtypes, tf.nn.softmax(prediction[0]))
@@ -251,7 +260,7 @@ def graph_9(list_of_spectro):
     count = count + 1
 
   plt.show(block=False)
-  plt.pause(1)
+  plt.pause(0.1)
   plt.close()
 
 while True:
@@ -259,7 +268,7 @@ while True:
   #test_file('/buffer.wav')
   spectros = []
   for count in range(0, 8):
-    filename = f'buffer.wav{count}'
+    filename = f'buffer{count}.wav'
     record_audio(f'word_data/{filename}')
     spectro = test_file(f'/{filename}')
     spectros.append(spectro)
@@ -273,8 +282,8 @@ while True:
   # spectros.append(spectroA)
   # spectroA = test_file('/fr_wave1/hospital-fr-def.wav')
   # spectros.append(spectroA)
-  spectroA = test_file('/uk_wave1/hospital-uk-def.wav')
-  spectros.append(spectroA)
+  #spectroA = test_file('/uk_wave1/hospital-uk-def.wav')
+  #spectros.append(spectroA)
 
-  graph_9(spectros)
+  #graph_9(spectros)
 
